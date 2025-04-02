@@ -4,6 +4,8 @@ import android.content.Context
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.*
 import androidx.datastore.preferences.preferencesDataStore
+import androidx.security.crypto.EncryptedSharedPreferences
+import androidx.security.crypto.MasterKey
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
@@ -12,12 +14,29 @@ import java.io.IOException
 import javax.inject.Inject
 import javax.inject.Singleton
 
-private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "settings")
-
 @Singleton
 class SettingsManager @Inject constructor(
     @ApplicationContext private val context: Context
 ) {
+    private val masterKey = MasterKey.Builder(context)
+        .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
+        .build()
+
+    private val encryptedPrefs = EncryptedSharedPreferences.create(
+        context,
+        "encrypted_settings",
+        masterKey,
+        EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+        EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
+    )
+
+    private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(
+        name = "settings",
+        produceMigrations = { context ->
+            listOf(SharedPreferencesMigration(context, "encrypted_settings"))
+        }
+    )
+
     private object PreferencesKeys {
         val THEME_MODE = intPreferencesKey("theme_mode")
         val LANGUAGE = stringPreferencesKey("language")
@@ -64,18 +83,21 @@ class SettingsManager @Inject constructor(
         context.dataStore.edit { preferences ->
             preferences[PreferencesKeys.THEME_MODE] = mode
         }
+        encryptedPrefs.edit().putInt("theme_mode", mode).apply()
     }
 
     suspend fun setLanguage(language: String) {
         context.dataStore.edit { preferences ->
             preferences[PreferencesKeys.LANGUAGE] = language
         }
+        encryptedPrefs.edit().putString("language", language).apply()
     }
 
     suspend fun setNotificationsEnabled(enabled: Boolean) {
         context.dataStore.edit { preferences ->
             preferences[PreferencesKeys.NOTIFICATIONS_ENABLED] = enabled
         }
+        encryptedPrefs.edit().putBoolean("notifications_enabled", enabled).apply()
     }
 
     companion object {

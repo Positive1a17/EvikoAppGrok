@@ -28,6 +28,9 @@ class HomeViewModel @Inject constructor(
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
 
+    private val _error = MutableStateFlow<String?>(null)
+    val error: StateFlow<String?> = _error.asStateFlow()
+
     private val _selectedCategory = MutableStateFlow<String?>(null)
     val selectedCategory: StateFlow<String?> = _selectedCategory.asStateFlow()
 
@@ -39,37 +42,37 @@ class HomeViewModel @Inject constructor(
     fun loadCategories() {
         viewModelScope.launch {
             _isLoading.value = true
+            _error.value = null
             try {
-                categoryRepository.getCategories().collect { 
-                    _categories.value = it
-                    if (_selectedCategory.value == null && it.isNotEmpty()) {
-                        _selectedCategory.value = it.first().id
+                categoryRepository.getCategories().collect { categories ->
+                    _categories.value = categories
+                    if (_selectedCategory.value == null && categories.isNotEmpty()) {
+                        _selectedCategory.value = categories.first().id
                     }
                 }
             } catch (e: Exception) {
-                // Обработка ошибок
+                _error.value = "Ошибка загрузки категорий: ${e.message}"
             } finally {
                 _isLoading.value = false
             }
         }
     }
 
-    fun loadProducts(categoryId: String? = null) {
+    fun loadProducts(categoryId: String? = _selectedCategory.value) {
         viewModelScope.launch {
             _isLoading.value = true
+            _error.value = null
             try {
-                val category = categoryId ?: _selectedCategory.value
-                if (category != null) {
-                    productRepository.getProductsByCategory(category).collect {
-                        _products.value = it
-                    }
+                val products = if (categoryId != null) {
+                    productRepository.getProductsByCategory(categoryId)
                 } else {
-                    productRepository.getProducts().collect {
-                        _products.value = it
-                    }
+                    productRepository.getAllProducts()
+                }
+                products.collect { productList ->
+                    _products.value = productList
                 }
             } catch (e: Exception) {
-                // Обработка ошибок
+                _error.value = "Ошибка загрузки товаров: ${e.message}"
             } finally {
                 _isLoading.value = false
             }

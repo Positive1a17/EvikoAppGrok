@@ -19,7 +19,11 @@ abstract class BaseActivity : ComponentActivity() {
 
     override fun attachBaseContext(newBase: Context) {
         val language = runBlocking {
-            settingsManager.language.first()
+            try {
+                settingsManager.language.first()
+            } catch (e: Exception) {
+                "ru" // Значение по умолчанию в случае ошибки
+            }
         }
         val context = LocaleUtils.setLocale(newBase, language)
         super.attachBaseContext(context)
@@ -27,14 +31,20 @@ abstract class BaseActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        observeLanguageChanges()
+        if (::settingsManager.isInitialized) {
+            observeLanguageChanges()
+        }
     }
 
     private fun observeLanguageChanges() {
         lifecycleScope.launch {
-            settingsManager.language.collect { language ->
-                LocaleUtils.setLocale(this@BaseActivity, language)
-                recreate()
+            try {
+                settingsManager.language.collect { language ->
+                    LocaleUtils.setLocale(this@BaseActivity, language)
+                    recreate()
+                }
+            } catch (e: Exception) {
+                // Обработка ошибок при изменении языка
             }
         }
     }
