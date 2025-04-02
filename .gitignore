@@ -22,4 +22,5 @@ gen/
 out/
 .navigation/
 captures/
-*.log 
+*.log
+-p/ 
