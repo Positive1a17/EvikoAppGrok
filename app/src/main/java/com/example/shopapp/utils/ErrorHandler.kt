@@ -15,17 +15,17 @@ class ErrorHandler @Inject constructor(
         return when (throwable) {
             is HttpException -> {
                 when (throwable.code()) {
-                    401 -> context.getString(R.string.error_unauthorized)
-                    403 -> context.getString(R.string.error_forbidden)
-                    404 -> context.getString(R.string.error_not_found)
-                    500 -> context.getString(R.string.error_server)
-                    else -> context.getString(R.string.error_unknown)
+                    401 -> "Ошибка авторизации"
+                    403 -> "Доступ запрещен"
+                    404 -> "Ресурс не найден"
+                    500 -> "Ошибка сервера"
+                    else -> "Неизвестная ошибка сети"
                 }
             }
-            is SocketTimeoutException -> context.getString(R.string.error_timeout)
-            is UnknownHostException -> context.getString(R.string.error_no_internet)
-            is IOException -> context.getString(R.string.error_network)
-            else -> context.getString(R.string.error_unknown)
+            is IOException -> "Ошибка сети"
+            is SocketTimeoutException -> "Превышено время ожидания"
+            is UnknownHostException -> "Нет подключения к интернету"
+            else -> "Произошла ошибка: ${throwable.message}"
         }
     }
 

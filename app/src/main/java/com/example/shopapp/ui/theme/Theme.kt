@@ -20,62 +20,48 @@ import androidx.core.view.WindowCompat
 import com.example.shopapp.data.preferences.SettingsManager
 
 private val DarkColorScheme = darkColorScheme(
-    primary = Color(0xFF6750A4),
-    secondary = Color(0xFF625B71),
-    tertiary = Color(0xFF7D5260),
-    background = Color(0xFF1C1B1F),
-    surface = Color(0xFF1C1B1F),
+    primary = Color(0xFF6200EE),
+    secondary = Color(0xFF03DAC6),
+    tertiary = Color(0xFF3700B3),
+    background = Color(0xFF121212),
+    surface = Color(0xFF121212),
     onPrimary = Color.White,
-    onSecondary = Color.White,
+    onSecondary = Color.Black,
     onTertiary = Color.White,
-    onBackground = Color(0xFFE6E1E5),
-    onSurface = Color(0xFFE6E1E5)
+    onBackground = Color.White,
+    onSurface = Color.White,
+    error = Color(0xFFCF6679)
 )
 
 private val LightColorScheme = lightColorScheme(
-    primary = Color(0xFF6750A4),
-    secondary = Color(0xFF625B71),
-    tertiary = Color(0xFF7D5260),
-    background = Color(0xFFFFFBFE),
-    surface = Color(0xFFFFFBFE),
+    primary = Color(0xFF6200EE),
+    secondary = Color(0xFF03DAC6),
+    tertiary = Color(0xFF3700B3),
+    background = Color.White,
+    surface = Color.White,
     onPrimary = Color.White,
-    onSecondary = Color.White,
+    onSecondary = Color.Black,
     onTertiary = Color.White,
-    onBackground = Color(0xFF1C1B1F),
-    onSurface = Color(0xFF1C1B1F)
+    onBackground = Color.Black,
+    onSurface = Color.Black,
+    error = Color(0xFFB00020)
 )
 
 @Composable
-fun ShopAppTheme(
-    settingsManager: SettingsManager? = null,
-    darkTheme: Boolean = isSystemInDarkTheme(),
-    dynamicColor: Boolean = true,
+fun AppTheme(
+    themeMode: String = "system",
     content: @Composable () -> Unit
 ) {
-    val themeMode by settingsManager?.themeMode?.collectAsState(initial = SettingsManager.THEME_MODE_SYSTEM)
-        ?: run { androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(SettingsManager.THEME_MODE_SYSTEM) } }
-
-    val shouldUseDarkTheme = when (themeMode) {
-        SettingsManager.THEME_MODE_LIGHT -> false
-        SettingsManager.THEME_MODE_DARK -> true
-        else -> darkTheme
-    }
-
     val colorScheme = when {
-        dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
-            val context = LocalContext.current
-            if (shouldUseDarkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
-        }
-        shouldUseDarkTheme -> DarkColorScheme
+        themeMode == "dark" || (themeMode == "system" && isSystemInDarkTheme()) -> DarkColorScheme
         else -> LightColorScheme
     }
-
     val view = LocalView.current
     if (!view.isInEditMode) {
         SideEffect {
             val window = (view.context as Activity).window
             window.statusBarColor = colorScheme.primary.toArgb()
-            WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = !shouldUseDarkTheme
+            WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = !isSystemInDarkTheme()
         }
     }
 

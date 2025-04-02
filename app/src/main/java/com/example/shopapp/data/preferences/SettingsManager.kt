@@ -2,17 +2,21 @@ package com.example.shopapp.data.preferences
 
 import android.content.Context
 import androidx.datastore.core.DataStore
-import androidx.datastore.preferences.core.*
+import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.core.booleanPreferencesKey
+import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
+import com.example.shopapp.utils.Constants
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.map
-import java.io.IOException
 import javax.inject.Inject
 import javax.inject.Singleton
+
+private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = Constants.PREFERENCES_NAME)
 
 @Singleton
 class SettingsManager @Inject constructor(
@@ -20,6 +24,7 @@ class SettingsManager @Inject constructor(
 ) {
     private val masterKey = MasterKey.Builder(context)
         .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
+        .setRequestStrongBoxBacked(true)
         .build()
 
     private val encryptedPrefs = EncryptedSharedPreferences.create(
@@ -30,79 +35,44 @@ class SettingsManager @Inject constructor(
         EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
     )
 
-    private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(
-        name = "settings",
-        produceMigrations = { context ->
-            listOf(SharedPreferencesMigration(context, "encrypted_settings"))
-        }
-    )
+    private val dataStore = context.dataStore
 
     private object PreferencesKeys {
-        val THEME_MODE = intPreferencesKey("theme_mode")
-        val LANGUAGE = stringPreferencesKey("language")
-        val NOTIFICATIONS_ENABLED = booleanPreferencesKey("notifications_enabled")
+        val THEME_MODE = stringPreferencesKey(Constants.KEY_THEME_MODE)
+        val LANGUAGE = stringPreferencesKey(Constants.KEY_LANGUAGE)
+        val NOTIFICATIONS = booleanPreferencesKey(Constants.KEY_NOTIFICATIONS)
     }
 
-    val themeMode: Flow<Int> = context.dataStore.data
-        .catch { exception ->
-            if (exception is IOException) {
-                emit(emptyPreferences())
-            } else {
-                throw exception
-            }
-        }
-        .map { preferences ->
-            preferences[PreferencesKeys.THEME_MODE] ?: THEME_MODE_SYSTEM
-        }
+    val themeMode: Flow<String> = dataStore.data.map { preferences ->
+        preferences[PreferencesKeys.THEME_MODE] ?: "system"
+    }
 
-    val language: Flow<String> = context.dataStore.data
-        .catch { exception ->
-            if (exception is IOException) {
-                emit(emptyPreferences())
-            } else {
-                throw exception
-            }
-        }
-        .map { preferences ->
-            preferences[PreferencesKeys.LANGUAGE] ?: "ru"
-        }
+    val language: Flow<String> = dataStore.data.map { preferences ->
+        preferences[PreferencesKeys.LANGUAGE] ?: "ru"
+    }
 
-    val notificationsEnabled: Flow<Boolean> = context.dataStore.data
-        .catch { exception ->
-            if (exception is IOException) {
-                emit(emptyPreferences())
-            } else {
-                throw exception
-            }
-        }
-        .map { preferences ->
-            preferences[PreferencesKeys.NOTIFICATIONS_ENABLED] ?: true
-        }
+    val notificationsEnabled: Flow<Boolean> = dataStore.data.map { preferences ->
+        preferences[PreferencesKeys.NOTIFICATIONS] ?: true
+    }
 
-    suspend fun setThemeMode(mode: Int) {
-        context.dataStore.edit { preferences ->
+    suspend fun setThemeMode(mode: String) {
+        dataStore.edit { preferences ->
             preferences[PreferencesKeys.THEME_MODE] = mode
         }
-        encryptedPrefs.edit().putInt("theme_mode", mode).apply()
+        encryptedPrefs.edit().putString(Constants.KEY_THEME_MODE, mode).apply()
     }
 
     suspend fun setLanguage(language: String) {
-        context.dataStore.edit { preferences ->
+        dataStore.edit { preferences ->
             preferences[PreferencesKeys.LANGUAGE] = language
         }
-        encryptedPrefs.edit().putString("language", language).apply()
+        encryptedPrefs.edit().putString(Constants.KEY_LANGUAGE, language).apply()
     }
 
     suspend fun setNotificationsEnabled(enabled: Boolean) {
-        context.dataStore.edit { preferences ->
-            preferences[PreferencesKeys.NOTIFICATIONS_ENABLED] = enabled
+        dataStore.edit { preferences ->
+            preferences[PreferencesKeys.NOTIFICATIONS] = enabled
         }
-        encryptedPrefs.edit().putBoolean("notifications_enabled", enabled).apply()
-    }
-
-    companion object {
-        const val THEME_MODE_SYSTEM = 0
-        const val THEME_MODE_LIGHT = 1
-        const val THEME_MODE_DARK = 2
+        encryptedPrefs.edit().putBoolean(Constants.KEY_NOTIFICATIONS, enabled).apply()
     }
 } 
